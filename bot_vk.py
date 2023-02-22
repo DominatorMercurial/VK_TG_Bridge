@@ -31,14 +31,12 @@ class BotVK():
         users_list = self._getUsers(request)
 
         for item in request['response']['items']:
-            message = ""
-            message += f"От: {users_list[item['from_id']]['first_name']} {users_list[item['from_id']]['last_name']}\n{item['text']}\n"
-            message += f"В: {datetime.datetime.fromtimestamp(item['date'])}"
-            for attachment in item['attachments']:
-                if attachment['type'] == 'video':
-                    self.getVideoMessage(attachment)
-                if attachment['type'] == 'photo':
-                    self.getImageMessage(attachment)
+            message = dict()
+            message['from'] = f"{users_list[item['from_id']]['first_name']} {users_list[item['from_id']]['last_name']}"
+            message['text'] = item['text']
+            message['datetime'] = datetime.datetime.fromtimestamp(item['date'])
+            message['attachments'] = self.parseAttachments(item['attachments'])
+            print(message)
             messages.append(message)
         messages.reverse()
         return messages
@@ -82,11 +80,28 @@ class BotVK():
             users_info[user['id']] = {"first_name" : user['first_name'], 'last_name' : user['last_name']}
         return users_info
 
+    def parseAttachments(self, attachhments):
+        message = dict()
+        for attachment in attachhments:
+            if attachment['type'] == 'video':
+                self.getVideoMessage(attachment)
+            if attachment['type'] == 'photo':
+                message['photo-url'] = self.getImageMessage(attachment)
+        return message
+
     def getImageMessage(self, attachment):
-        print(attachment['photo'])
+        max_size = 'a'
+        picture_url = None
         for size in attachment['photo']['sizes']:
-            print(size)
-        print()
+            if max_size < size['type']:
+                max_size = size['type']
+                picture_url = size['url']
+
+        # print(max_size, attachment['photo']['text'], picture_url)
+        # print()
+        return picture_url
+
+
     def getVideoMessage(self, attachment):
         video_url = list
         print(attachment['video'])
