@@ -81,12 +81,12 @@ class BotVK():
         return users_info
 
     def parseAttachments(self, attachhments):
-        message = dict()
+        message = {'photo-urls' : list()}
         for attachment in attachhments:
             if attachment['type'] == 'video':
                 self.getVideoMessage(attachment)
             if attachment['type'] == 'photo':
-                message['photo-url'] = self.getImageMessage(attachment)
+                message['photo-urls'].append(self.getImageMessage(attachment))
         return message
 
     def getImageMessage(self, attachment):
@@ -97,8 +97,6 @@ class BotVK():
                 max_size = size['type']
                 picture_url = size['url']
 
-        # print(max_size, attachment['photo']['text'], picture_url)
-        # print()
         return picture_url
 
 
