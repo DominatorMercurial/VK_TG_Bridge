@@ -86,14 +86,15 @@ class BotTG():
 
     def sendMultiMessage(self, messages : list):
         for message in messages:
-            if message['attachments']['photo_urls'] is not None:
+            if len(message['attachments']['photo_urls']) > 0:
                 photo_urls = message['attachments']['photo_urls']
                 if len(photo_urls) == 1:
                     caption = f"От: {message['from']}\n{message['text']}\n{message['datetime']}"
                     self.sendPhotoMessage(photo_urls[0], caption)
                     return
-                for url in photo_urls:
-                    pass
+                else:
+                    for url in photo_urls:
+                        pass
             if message['attachments']['audio_message'] is not None:
                 self.sendVoiceMessage(message['attachments']['audio_message'])
                 return

@@ -13,7 +13,7 @@ def getAllMessages():
     unread_chats = BotVK().messages_getConversations()
     for u_chat in unread_chats:
         messages = BotVK().messages_getHistory(u_chat['id'])
-        BotTG().sendMultiMessage(messages)
+        # BotTG().sendMultiMessage(messages)
 
 if __name__ == '__main__':
     # checkUnreadChats()

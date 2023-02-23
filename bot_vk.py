@@ -8,6 +8,26 @@ class BotVK():
         self.vk_uri = "https://api.vk.com/method/"
         self.version = "v=5.131"
 
+    def message_parse(self, message_item : dict, users_list : dict):
+        import datetime
+        # print(message_item)
+        message = dict()
+        message['from'] = f"{users_list[message_item['from_id']]['first_name']} {users_list[message_item['from_id']]['last_name']}"
+        message['text'] = message_item['text']
+        message['datetime'] = datetime.datetime.fromtimestamp(message_item['date'])
+        message['attachments'] = self.parseAttachments(message_item['attachments'])
+        message['message_id'] = message_item['id']
+        if 'reply_message' in message_item:
+            message['reply_message'] = self.message_parse(message_item['reply_message'], users_list)
+
+        if 'fwd_messages' in message_item and len(message_item['fwd_messages']) > 0:
+            message['fwd_messages'] = list()
+            for fwd_message in message_item['fwd_messages']:
+                message['fwd_messages'].append(self.message_parse(fwd_message, users_list))
+
+        # print(message)
+        return message
+
     def messages_GetConversationsById(self, user_ids):
         link = f"{self.vk_uri}/messages.getConversationsById?peer_ids={user_ids}&access_token={self.__token}&fields=unread_count&{self.version}"
         request = requests.post(link).json()
@@ -17,30 +37,25 @@ class BotVK():
             print("Your messages unread")
         elif out_read_cmid > in_read_cmid:
             offset =  in_read_cmid - out_read_cmid
+            if offset < -200:
+                offset = -200
             print(f"You have {-offset} unread messages")
         else:
             print("Nothing new")
         return offset
 
     def messages_getHistory(self, user_ids):
-        import datetime
+
         offset = self.messages_GetConversationsById(user_ids)
         link = f"{self.vk_uri}/messages.getHistory?peer_id={user_ids}&access_token={self.__token}&{self.version}&offset={offset}&start_message_id=-1&count={-offset}&extended=1"
         request = requests.post(link).json()
-        messages = list()
         users_list = self._getUsers(request)
-        print(users_list)
 
+        messages = list()
         for item in request['response']['items']:
-            # print(item)
-            message = dict()
-            message['from'] = f"{users_list[item['from_id']]['first_name']} {users_list[item['from_id']]['last_name']}"
-            message['text'] = item['text']
-            message['datetime'] = datetime.datetime.fromtimestamp(item['date'])
-            message['attachments'] = self.parseAttachments(item['attachments'])
-            print(message)
-            messages.append(message)
+            messages.append(self.message_parse(item, users_list))
         messages.reverse()
+
         return messages
 
     def messages_getMessageID(self,  user_ids : str):
@@ -83,12 +98,11 @@ class BotVK():
         return users_info
 
     def parseAttachments(self, attachhments):
-        message = {'photo_urls' : None, 'audio_message' : None, 'audio_file' : None}
+        message = {'photo_urls' : list(), 'audio_message' : None, 'audio_file' : None}
         for attachment in attachhments:
             if attachment['type'] == 'video':
                 self.getVideoMessage(attachment)
             if attachment['type'] == 'photo':
-                message['photo_urls'] = list()
                 message['photo_urls'].append(self.getImageMessage(attachment))
             if attachment['type'] == 'audio_message':
                 message['audio_message'] =  self.getAudioMessage(attachment)
