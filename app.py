@@ -18,8 +18,4 @@ def getAllMessages():
 if __name__ == '__main__':
     # checkUnreadChats()
     getAllMessages()
-    # messages = BotVK().messages_getHistory('227002628')
-    # BotTG().sendMultiMessage(messages)
-
-
-
+    # BotVK().messages_getHistory('223363592')

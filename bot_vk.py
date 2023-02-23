@@ -27,7 +27,7 @@ class BotVK():
             for fwd_message in message_item['fwd_messages']:
                 message['fwd_messages'].append(self.message_parse(fwd_message, users_list))
 
-        # print(message)
+        print(message)
         return message
 
     def messages_GetConversationsById(self, user_ids):
@@ -100,59 +100,87 @@ class BotVK():
         return users_info
 
     def parseAttachments(self, attachments):
-        message = {'sticker' : None, 'audio_message' : None, 'photo' : list(), 'link' : None, 'video' : None, 'audio' : list(), 'gift' : None, 'wall' : None}
+        message = {'sticker' : None, 'audio_message' : None, 'photo' : list(), 'link' : None, 'video' : list(), 'audio' : list(), 'gift' : None, 'wall' : None, 'doc' : list()}
 
         for attachment in attachments:
-            # print(attachment)
-            if 'sticker' in attachment:
-                message['sticker'] = self.getSticker(attachment['sticker'])
-        #     if attachment['type'] == 'video':
-        #         self.getVideoMessage(attachment)
-        #     if attachment['type'] == 'photo':
-        #         message['photo_urls'].append(self.getImageMessage(attachment))
-        #     if attachment['type'] == 'audio_message':
-        #         message['audio_message'] =  self.getAudioMessage(attachment)
-        #     if attachment['type'] == 'audio':
-        #         message['audio_file'] = self.getAudioFileMessage(attachment)
+
+            if attachment['type'] == 'sticker':
+                message['sticker'] = self.getStickerFromMessage(attachment['sticker'])
+            if attachment['type'] == 'audio_message':
+                message['audio_message'] =  self.getVoiceFromMessage(attachment)
+            if attachment['type'] == 'video':
+                message['video'].append(self.getVideoFromMessage(attachment))
+            if attachment['type'] == 'photo':
+                message['photo'].append(self.getImageFromMessage(attachment))
+            if attachment['type'] == 'audio':
+                message['audio'].append(self.getAudioFileFromMessage(attachment))
+            if attachment['type'] == 'doc':
+                message['doc'].append(self.getDocFileFromMessage(attachment))
+            if attachment['type'] == 'link':
+                message['link'] = (self.getLinkFromMessage(attachment))
+            if attachment['type'] == 'wall':
+                message['wall'] = self.getWallFromMessage(attachment)
+            if attachment['type'] == 'gift':
+                message['gift'] = self.getGiftFromMessage(attachment)
 
         return message
 
-    def getSticker(self, sticker):
+    def getStickerFromMessage(self, sticker):
         # print(f"Sticker ID: {sticker['sticker_id']}")
         # print(f"Sticker URL: {sticker['images'][len(sticker['images']) - 1]['url']}")
         return {'type' : 'sticker', 'sticker_id' : sticker['sticker_id'], 'url': sticker['images'][len(sticker['images']) - 1]['url']}
 
-    def getImageMessage(self, attachment):
+    def getVoiceFromMessage(self, attachment):
+        # print(f"Audio URL: {attachment['audio_message']['link_ogg']}")
+        return {'type' : 'audio_message', 'url' : attachment['audio_message']['link_ogg']}
+
+    def getImageFromMessage(self, attachment):
         max_size = 'a'
         picture_url = None
         for size in attachment['photo']['sizes']:
+            if size['type'] == 'w':
+                return {'type': 'photo', 'url': size['url']}
+
             if max_size < size['type']:
                 max_size = size['type']
                 picture_url = size['url']
 
-        return picture_url
+        return {'type' : 'photo', 'url' : picture_url}
 
 
-    def getVideoMessage(self, attachment):
-        video_url = list()
-        # print(attachment['video'])
-        # # print(attachment['video']['qualities_info'])
-        # for part in attachment['video']['files']:
-        #     video_url.append(attachment['video']['files'][str(part)])
-        # print(video_url)
+    def getVideoFromMessage(self, attachment):
+        if 'files' in attachment['video']:
+            if 'external' in attachment['video']['files']:
+                return {'type' : 'video', 'url' : attachment['video']['files']['external']}
 
-    def getAudioMessage(self, attachment):
-        voice_url = attachment['audio_message']['link_ogg']
-        return voice_url
+            max_key = "mp4_144"
+            for key in attachment['video']['files']:
+                if 'mp4_' in key and max_key < key:
+                    max_key = key
+            return {'type' : 'video', 'url' : attachment['video']['files'][max_key]}
 
-    def getAudioFileMessage(self, attachment):
-        artist = attachment['audio']['artist']
-        title = attachment['audio']['title']
-        url = attachment['audio']['url']
-        return {'artist' : artist, 'title' : title, 'url' : url}
+        else:
+            return {'type' : 'unavailable_video'}
 
-    def getVoiceMessage(self, attachment):
-        pass
+    def getAudioFileFromMessage(self, attachment):
+        return {'type' : 'audio', 'artist' : attachment['audio']['artist'], 'title' : attachment['audio']['title'], 'url' : attachment['audio']['url']}
 
-    def getFileMessage(self, attachment):
-        pass
+    def getDocFileFromMessage(self, attachment):
+        return {'type' : 'doc', 'title' : attachment['doc']['title'], 'url' : attachment['doc']['url']}
+
+    def getLinkFromMessage(self, attachment):
+        return {'type' : 'link', 'url' : attachment['link']['url'], 'title' : attachment['link']['title'], 'caption' : attachment['link']['caption']}
+
+    def getWallFromMessage(self, attachment):
+        wall = {'type' : 'wall'}
+        wall['text'] = attachment['wall']['text']
+        if len(attachment['wall']['attachments']) > 0:
+             wall['attachment'] = self.parseAttachments(attachment['wall']['attachments'])
+        return wall
+
+    def getGiftFromMessage(self, attachment):
+        max_key = "thumb_0"
+        for key in attachment['gift']:
+            if 'thumb_' in key and max_key < key:
+                max_key = key
+        return {'type': 'gift', 'url': attachment['gift'][max_key]}
