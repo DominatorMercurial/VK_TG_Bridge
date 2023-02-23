@@ -12,11 +12,13 @@ class BotVK():
         import datetime
         # print(message_item)
         message = dict()
+        message['message_id'] = message_item['id']
         message['from'] = f"{users_list[message_item['from_id']]['first_name']} {users_list[message_item['from_id']]['last_name']}"
         message['text'] = message_item['text']
         message['datetime'] = datetime.datetime.fromtimestamp(message_item['date'])
-        message['attachments'] = self.parseAttachments(message_item['attachments'])
-        message['message_id'] = message_item['id']
+        if len(message_item['attachments']) > 0:
+            message['attachments'] = self.parseAttachments(message_item['attachments'])
+
         if 'reply_message' in message_item:
             message['reply_message'] = self.message_parse(message_item['reply_message'], users_list)
 
@@ -97,19 +99,28 @@ class BotVK():
             users_info[user['id']] = {"first_name" : user['first_name'], 'last_name' : user['last_name']}
         return users_info
 
-    def parseAttachments(self, attachhments):
-        message = {'photo_urls' : list(), 'audio_message' : None, 'audio_file' : None}
-        for attachment in attachhments:
-            if attachment['type'] == 'video':
-                self.getVideoMessage(attachment)
-            if attachment['type'] == 'photo':
-                message['photo_urls'].append(self.getImageMessage(attachment))
-            if attachment['type'] == 'audio_message':
-                message['audio_message'] =  self.getAudioMessage(attachment)
-            if attachment['type'] == 'audio':
-                message['audio_file'] = self.getAudioFileMessage(attachment)
+    def parseAttachments(self, attachments):
+        message = {'sticker' : None, 'audio_message' : None, 'photo' : list(), 'link' : None, 'video' : None, 'audio' : list(), 'gift' : None, 'wall' : None}
+
+        for attachment in attachments:
+            # print(attachment)
+            if 'sticker' in attachment:
+                message['sticker'] = self.getSticker(attachment['sticker'])
+        #     if attachment['type'] == 'video':
+        #         self.getVideoMessage(attachment)
+        #     if attachment['type'] == 'photo':
+        #         message['photo_urls'].append(self.getImageMessage(attachment))
+        #     if attachment['type'] == 'audio_message':
+        #         message['audio_message'] =  self.getAudioMessage(attachment)
+        #     if attachment['type'] == 'audio':
+        #         message['audio_file'] = self.getAudioFileMessage(attachment)
 
         return message
+
+    def getSticker(self, sticker):
+        # print(f"Sticker ID: {sticker['sticker_id']}")
+        # print(f"Sticker URL: {sticker['images'][len(sticker['images']) - 1]['url']}")
+        return {'type' : 'sticker', 'sticker_id' : sticker['sticker_id'], 'url': sticker['images'][len(sticker['images']) - 1]['url']}
 
     def getImageMessage(self, attachment):
         max_size = 'a'
