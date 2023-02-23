@@ -1,6 +1,7 @@
 from array import array
 import requests
 from auth_info import *
+import urllib.parse
 
 class BotTG():
     def __init__(self):
@@ -17,7 +18,6 @@ class BotTG():
 
         return messageTemplate[:-1]
 
-
     def userAdd(self, chat_id: str):
         if chat_id not in self.__mailing_list:
             self.__mailing_list.append(chat_id)
@@ -27,15 +27,55 @@ class BotTG():
         send_message = requests.get(self.__API_Link + f"sendMessage?chat_id={self._myID}&text={messageText}").json()
         print(send_message)
 
+    def sendPhotoMessage(self, photo_link: str, caption=''):
+        photo_raw = {'photo': photo_link}
+        photo_encoded = urllib.parse.urlencode(photo_raw)
+        r = requests.get(self.__API_Link + f"sendPhoto?chat_id={self._myID}&{photo_encoded}&caption={caption}").json()
+
+    def sendAudioMessage(self, audio_link: str, caption='', title='unknown'):
+        audio_raw = {'audio': audio_link}
+        audio_encoded = urllib.parse.urlencode(audio_raw)
+        r = requests.get(self.__API_Link + f"sendAudio?chat_id={self._myID}&{audio_encoded}&caption={caption}&title={title}").json()
+
+    def sendVoiceMessage(self, voice_link: str, caption=''):
+        voice_raw = {'voice': voice_link}
+        voice_encoded = urllib.parse.urlencode(voice_raw)
+        r = requests.get(self.__API_Link + f"sendVoice?chat_id={self._myID}&{voice_encoded}&caption={caption}").json()
+
+    def sendMediaGroup(self, media_list : list, caption : str = ""):
+        media_encoded = list()
+        m = dict()
+        counter = 0
+        for media in media_list:
+            m[counter] = urllib.parse.urlencode(media)
+            counter += 1
+
+        print(m)
+        r = requests.get(self.__API_Link + f"sendMediaGroup?chat_id={self._myID}&media={m}&caption={caption}").json()
+        print(r)
+
+    def sendGeneric(self, method: str, params: dict):
+        params_str = ''
+        for param in params:
+            if param is None:
+                pass
+            else:
+                param_raw = {}
+
     def updatesInfo(self, updates):
         for item in updates['result']:
+            print(item)
             if 'message' in item:
                 user = item['message']['from']
                 chat = item['message']['chat']
                 print(f"UPDATE ID: {item['update_id']}")
                 if 'title' in chat:
                     print(f"TITLE: {chat['title']} | TYPE {chat['type']} | CHAT ID: {chat['id']}")
-                print(f"USER NAME: {user['username']} | NAME: {user['first_name']} {user['last_name']} | USER ID: {user['id']}")
+
+                print(f"USER NAME: {user['username']} | NAME: {user['first_name']}", end="")
+                if 'last_name' in user:
+                    print(f" {user['last_name']}", end="")
+                print(f" | USER ID: {user['id']}")
 
                 if 'text' in item['message']:
                     print(f"MESSAGE: {item['message']['text']}")

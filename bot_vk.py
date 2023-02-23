@@ -101,9 +101,18 @@ class BotVK():
 
 
     def getVideoMessage(self, attachment):
-        video_url = list
+        video_url = list()
         print(attachment['video'])
         # # print(attachment['video']['qualities_info'])
         # for part in attachment['video']['files']:
         #     video_url.append(attachment['video']['files'][str(part)])
         # print(video_url)
+
+    def getAudioMessage(self, attachment):
+        pass
+
+    def getVoiceMessage(self, attachment):
+        pass
+
+    def getFileMessage(self, attachment):
+        pass
