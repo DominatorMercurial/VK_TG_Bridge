@@ -29,8 +29,10 @@ class BotVK():
         request = requests.post(link).json()
         messages = list()
         users_list = self._getUsers(request)
+        print(users_list)
 
         for item in request['response']['items']:
+            # print(item)
             message = dict()
             message['from'] = f"{users_list[item['from_id']]['first_name']} {users_list[item['from_id']]['last_name']}"
             message['text'] = item['text']
@@ -75,18 +77,24 @@ class BotVK():
 
 
     def _getUsers(self, request : dict):
-        users_info = dict()
+        users_info = {-190195384 : {'first_name' : 'Сглыпа', 'last_name' : 'Ебаная'}}
         for user in request['response']['profiles']:
             users_info[user['id']] = {"first_name" : user['first_name'], 'last_name' : user['last_name']}
         return users_info
 
     def parseAttachments(self, attachhments):
-        message = {'photo-urls' : list()}
+        message = {'photo_urls' : None, 'audio_message' : None, 'audio_file' : None}
         for attachment in attachhments:
             if attachment['type'] == 'video':
                 self.getVideoMessage(attachment)
             if attachment['type'] == 'photo':
-                message['photo-urls'].append(self.getImageMessage(attachment))
+                message['photo_urls'] = list()
+                message['photo_urls'].append(self.getImageMessage(attachment))
+            if attachment['type'] == 'audio_message':
+                message['audio_message'] =  self.getAudioMessage(attachment)
+            if attachment['type'] == 'audio':
+                message['audio_file'] = self.getAudioFileMessage(attachment)
+
         return message
 
     def getImageMessage(self, attachment):
@@ -102,14 +110,21 @@ class BotVK():
 
     def getVideoMessage(self, attachment):
         video_url = list()
-        print(attachment['video'])
+        # print(attachment['video'])
         # # print(attachment['video']['qualities_info'])
         # for part in attachment['video']['files']:
         #     video_url.append(attachment['video']['files'][str(part)])
         # print(video_url)
 
     def getAudioMessage(self, attachment):
-        pass
+        voice_url = attachment['audio_message']['link_ogg']
+        return voice_url
+
+    def getAudioFileMessage(self, attachment):
+        artist = attachment['audio']['artist']
+        title = attachment['audio']['title']
+        url = attachment['audio']['url']
+        return {'artist' : artist, 'title' : title, 'url' : url}
 
     def getVoiceMessage(self, attachment):
         pass

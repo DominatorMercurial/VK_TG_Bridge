@@ -43,24 +43,22 @@ class BotTG():
         r = requests.get(self.__API_Link + f"sendVoice?chat_id={self._myID}&{voice_encoded}&caption={caption}").json()
 
     def sendMediaGroup(self, media_list : list, caption : str = ""):
+        #not work
         media_encoded = list()
-        m = dict()
-        counter = 0
         for media in media_list:
-            m[counter] = urllib.parse.urlencode(media)
-            counter += 1
+             print(urllib.parse.urlencode(media))
 
-        print(m)
-        r = requests.get(self.__API_Link + f"sendMediaGroup?chat_id={self._myID}&media={m}&caption={caption}").json()
+        r = requests.get(self.__API_Link + f"sendMediaGroup?chat_id={self._myID}&media={media}&caption={caption}").json()
         print(r)
 
     def sendGeneric(self, method: str, params: dict):
         params_str = ''
         for param in params:
-            if param is None:
-                pass
-            else:
-                param_raw = {}
+            if params[param] is not None:
+                param_raw = {param : params['param']}
+                print(param_raw)
+
+
 
     def updatesInfo(self, updates):
         for item in updates['result']:
@@ -85,6 +83,26 @@ class BotTG():
                             print(f"\tMESSAGE LENGTH: {entity['length']}")
                             print(f"\tMESSAGE TYPE: {entity['type']}")
                 print()
+
+    def sendMultiMessage(self, messages : list):
+        for message in messages:
+            if message['attachments']['photo_urls'] is not None:
+                photo_urls = message['attachments']['photo_urls']
+                if len(photo_urls) == 1:
+                    caption = f"От: {message['from']}\n{message['text']}\n{message['datetime']}"
+                    self.sendPhotoMessage(photo_urls[0], caption)
+                    return
+                for url in photo_urls:
+                    pass
+            if message['attachments']['audio_message'] is not None:
+                self.sendVoiceMessage(message['attachments']['audio_message'])
+                return
+            if message['attachments']['audio_file'] is not None:
+                audio = message['attachments']['audio_file']
+                self.sendAudioMessage(audio_link=audio['url'], caption=message['text'], title=f"{audio['artist']} - {audio['title']}")
+                return
+            text = f"От: {message['from']}\n{message['text']}\n{message['datetime']}"
+            self.sendMessage(text)
 
     def getUpdatesFromTelegram(self):
         updates = requests.get(self.__API_Link + f"getUpdates?").json()
