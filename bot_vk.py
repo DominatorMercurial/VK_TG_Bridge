@@ -35,7 +35,7 @@ class BotVK():
         request = requests.post(link).json()
         in_read_cmid = request['response']['items'][0]['in_read_cmid']
         out_read_cmid = request['response']['items'][0]['out_read_cmid']
-
+        unread_messages = 0
         if in_read_cmid > out_read_cmid:
             print("Your messages unread")
         elif out_read_cmid > in_read_cmid:
@@ -121,7 +121,6 @@ class BotVK():
         message = {'sticker' : None, 'audio_message' : None, 'photo' : list(), 'link' : None, 'video' : list(), 'audio' : list(), 'gift' : None, 'wall' : None, 'doc' : list()}
 
         for attachment in attachments:
-
             if attachment['type'] == 'sticker':
                 message['sticker'] = self.getStickerFromMessage(attachment['sticker'])
             if attachment['type'] == 'audio_message':
@@ -208,9 +207,14 @@ class BotVK():
 
     def writeMessageHistoryInCSV(self, peer_id, messages):
         import csv
+        last_recorded_message_ID =self.getLastMessageIDFromCSV(peer_id)
         tmp = list()
         for message in messages:
-            tmp.append([message['message_id'], message])
+            if message['message_id'] > last_recorded_message_ID:
+                tmp.append([message['message_id'], message])
+
+        if len(tmp) == 0:
+            return messages[len(messages) - 1]['message_id']
 
         try:
             file = open(f"dialogs\{peer_id}.csv", mode="x", encoding="UTF-8")
@@ -222,3 +226,14 @@ class BotVK():
             file_writer.writerows(tmp)
 
         return tmp[len(tmp) - 1][0]
+
+    def getLastMessageIDFromCSV(self, peer_id):
+        import os, csv
+        csv_items = None
+        if os.path.exists(fr"dialogs\{peer_id}.csv"):
+            file = open(f"dialogs\{peer_id}.csv", mode="r", encoding="UTF-8")
+            csv_items = list(csv.reader(file, dialect='excel'))
+            if len(csv_items) != 0:
+                return int(csv_items[len(csv_items) - 1][0].split(';')[0])
+        else:
+            return 0
