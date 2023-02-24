@@ -5,7 +5,7 @@ def checkUnreadChats():
     unread_chats = BotVK().messages_getConversations()
     message = f"У вас есть {len(unread_chats)} беседы с непрочитанными сообщениями:\n"
     for u_chat in unread_chats:
-        # print(u_chat['id'], u_chat['from'])
+        print(u_chat['id'], u_chat['from'])
         message+=f"\t-{u_chat['from']} ({u_chat['unread']})\n"
     BotTG().sendMessage(message)
 
@@ -18,4 +18,6 @@ def getAllMessages():
 if __name__ == '__main__':
     # checkUnreadChats()
     getAllMessages()
-    # BotVK().messages_getHistory('223363592')
+    # messages = BotVK().messages_getHistory('2000000015')
+    # print(BotVK().getConversationMembers('2000000015'))
+    # BotVK().getConversationMembers('2000000015')

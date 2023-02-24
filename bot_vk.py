@@ -27,7 +27,7 @@ class BotVK():
             for fwd_message in message_item['fwd_messages']:
                 message['fwd_messages'].append(self.message_parse(fwd_message, users_list))
 
-        print(message)
+        # print(message)
         return message
 
     def messages_GetConversationsById(self, user_ids):
@@ -35,30 +35,53 @@ class BotVK():
         request = requests.post(link).json()
         in_read_cmid = request['response']['items'][0]['in_read_cmid']
         out_read_cmid = request['response']['items'][0]['out_read_cmid']
+
         if in_read_cmid > out_read_cmid:
             print("Your messages unread")
         elif out_read_cmid > in_read_cmid:
-            offset =  in_read_cmid - out_read_cmid
-            if offset < -200:
-                offset = -200
-            print(f"You have {-offset} unread messages")
+            unread_messages = out_read_cmid - in_read_cmid
+            print(f"You have {unread_messages} unread messages")
         else:
             print("Nothing new")
-        return offset
+        return unread_messages
+
+    def getConversationMembers(self, peer_id):
+        link = f"{self.vk_uri}/messages.getConversationMembers?peer_id={peer_id}&access_token={self.__token}&{self.version}"
+        request = requests.post(link).json()
+
+        users_info = dict()
+        for user in request['response']['profiles']:
+            users_info[user['id']] = {"first_name": user['first_name'], 'last_name': user['last_name']}
+        if 'groups' in request['response']:
+            for group in request['response']['groups']:
+                users_info[-group['id']] = {'first_name': group['name'], 'last_name': ''}
+
+        return users_info
 
     def messages_getHistory(self, user_ids):
+        start_message_id = -1
+        unread_messages = self.messages_GetConversationsById(user_ids)
+        users_list = self.getConversationMembers(user_ids)
 
-        offset = self.messages_GetConversationsById(user_ids)
-        link = f"{self.vk_uri}/messages.getHistory?peer_id={user_ids}&access_token={self.__token}&{self.version}&offset={offset}&start_message_id=-1&count={-offset}&extended=1"
-        request = requests.post(link).json()
-        users_list = self._getUsers(request)
+        while unread_messages > 0:
+            if unread_messages >= 200:
+                offset = -200
+            else:
+                offset = -unread_messages
 
-        messages = list()
-        for item in request['response']['items']:
-            messages.append(self.message_parse(item, users_list))
-        messages.reverse()
+            link = f"{self.vk_uri}/messages.getHistory?peer_id={user_ids}&access_token={self.__token}&{self.version}&offset={offset}&start_message_id={start_message_id}&count={-offset}&extended=1"
+            request = requests.post(link).json()
 
-        return messages
+            messages = list()
+            for item in request['response']['items']:
+                messages.append(self.message_parse(item, users_list))
+            messages.reverse()
+
+            # print(messages)
+
+            unread_messages += offset
+            start_message_id = self.writeMessageHistoryInCSV(user_ids, messages)
+
 
     def messages_getMessageID(self,  user_ids : str):
         offset = self.messages_GetConversationsById(user_ids)
@@ -77,12 +100,13 @@ class BotVK():
     def messages_getConversations(self):
         link = f"{self.vk_uri}/messages.getConversations?access_token={self.__token}&{self.version}&filter=unread&extended=1"
         request = requests.post(link).json()
-        users_list  = self._getUsers(request)
+
 
         chats_info = list()
         for item in request['response']['items']:
             chat_i = dict()
             chat_i["id"] = item['conversation']['peer']['id']
+            users_list = self.getConversationMembers(chat_i['id'])
             if item['conversation']['peer']['type'] == 'chat':
                 chat_i["from"] = item['conversation']['chat_settings']['title']
             else:
@@ -92,12 +116,6 @@ class BotVK():
 
         return chats_info
 
-
-    def _getUsers(self, request : dict):
-        users_info = {-190195384 : {'first_name' : 'Сглыпа', 'last_name' : 'Ебаная'}}
-        for user in request['response']['profiles']:
-            users_info[user['id']] = {"first_name" : user['first_name'], 'last_name' : user['last_name']}
-        return users_info
 
     def parseAttachments(self, attachments):
         message = {'sticker' : None, 'audio_message' : None, 'photo' : list(), 'link' : None, 'video' : list(), 'audio' : list(), 'gift' : None, 'wall' : None, 'doc' : list()}
@@ -184,3 +202,23 @@ class BotVK():
             if 'thumb_' in key and max_key < key:
                 max_key = key
         return {'type': 'gift', 'url': attachment['gift'][max_key]}
+
+
+
+
+    def writeMessageHistoryInCSV(self, peer_id, messages):
+        import csv
+        tmp = list()
+        for message in messages:
+            tmp.append([message['message_id'], message])
+
+        try:
+            file = open(f"dialogs\{peer_id}.csv", mode="x", encoding="UTF-8")
+            file_writer = csv.writer(file, delimiter=";", lineterminator="\n")
+            file_writer.writerows(tmp)
+        except FileExistsError:
+            file = open(f"dialogs\{peer_id}.csv", mode="a", encoding="UTF-8")
+            file_writer = csv.writer(file, delimiter=";", lineterminator="\n")
+            file_writer.writerows(tmp)
+
+        return tmp[len(tmp) - 1][0]
