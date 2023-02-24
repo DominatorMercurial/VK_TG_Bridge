@@ -25,7 +25,7 @@ class BotTG():
 
     def sendMessage(self, messageText : str):
         send_message = requests.get(self.__API_Link + f"sendMessage?chat_id={self._myID}&text={messageText}").json()
-        print(send_message)
+        # print(send_message)
 
     def sendPhotoMessage(self, photo_link: str, caption=''):
         photo_raw = {'photo': photo_link}

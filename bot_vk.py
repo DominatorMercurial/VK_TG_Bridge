@@ -82,20 +82,10 @@ class BotVK():
             unread_messages += offset
             start_message_id = self.writeMessageHistoryInCSV(user_ids, messages)
 
-
-    def messages_getMessageID(self,  user_ids : str):
-        offset = self.messages_GetConversationsById(user_ids)
-        link = f"{self.vk_uri}/messages.getHistory?peer_id={user_ids}&access_token={self.__token}&{self.version}&offset={offset}&start_message_id=-1&count={-offset}&extended=1"
-        request = requests.post(link).json()
-        list_of_message_ID = list()
-        for message in request['response']['items']:
-            list_of_message_ID. append(message['id'])
-
-        return list_of_message_ID[0]
-
-    def messages_markAsRead(self, user_ids : str, message_ID : str):
-        link = f"{self.vk_uri}/messages.markAsRead?peer_id={user_ids}&access_token={self.__token}&{self.version}&start_message_id={message_ID}"
+    def messages_markAsRead(self, peer_id : str, message_id):
+        link = f"{self.vk_uri}/messages.markAsRead?peer_id={peer_id}&access_token={self.__token}&{self.version}&start_message_id={message_id}"
         requests.post(link).json()
+        self.deletingRowsByID(peer_id, message_id)
 
     def messages_getConversations(self):
         link = f"{self.vk_uri}/messages.getConversations?access_token={self.__token}&{self.version}&filter=unread&extended=1"
@@ -211,7 +201,7 @@ class BotVK():
         tmp = list()
         for message in messages:
             if message['message_id'] > last_recorded_message_ID:
-                tmp.append([message['message_id'], message])
+                tmp.append([message['message_id'], "unread",  message])
 
         if len(tmp) == 0:
             return messages[len(messages) - 1]['message_id']
@@ -237,3 +227,13 @@ class BotVK():
                 return int(csv_items[len(csv_items) - 1][0].split(';')[0])
         else:
             return 0
+
+    def deletingRowsByID(self, peer_id, message_id):
+        import os, csv
+        if os.path.exists(fr"dialogs\{peer_id}.csv"):
+            file = open(f"dialogs\{peer_id}.csv", mode="r", encoding="UTF-8")
+            message_table = list(csv.reader(file, dialect='excel'))
+            print(message_table)
+
+            # file = open(f"dialogs\{peer_id}.csv", mode="w", encoding="UTF-8")
+            # csv.writer(file, delimiter=";", lineterminator="\n").writerows(updated_message_table)
