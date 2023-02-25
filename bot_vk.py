@@ -15,7 +15,7 @@ class BotVK():
         message['message_id'] = message_item['id']
         message['from'] = f"{users_list[message_item['from_id']]['first_name']} {users_list[message_item['from_id']]['last_name']}"
         message['text'] = message_item['text']
-        message['datetime'] = datetime.datetime.fromtimestamp(message_item['date'])
+        message['datetime'] = str(datetime.datetime.fromtimestamp(message_item['date']))
         if len(message_item['attachments']) > 0:
             message['attachments'] = self.parseAttachments(message_item['attachments'])
 
