@@ -22,7 +22,13 @@ def getAllUnreadMessages():
 if __name__ == '__main__':
     directoryChecker()
     # checkUnreadChats()
-    # getAllUnreadMessages()
+    #getAllUnreadMessages()
     # BotVK().messages_markAsRead('2000000015', 150358)
-    BotVK().deletingRowsByID('2000000015', 150431)
+    #BotVK().deletingRowsByID('2000000015', 150431)
     # print(BotVK().getLastMessageIDFromCSV('2000000015'))
+
+    bot_tg = BotTG()
+    csv_files = bot_tg.ListCSVFiles()
+
+    for file in csv_files:
+        print(bot_tg.GetMessagesFromCSV(file))

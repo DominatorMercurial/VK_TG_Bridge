@@ -117,3 +117,37 @@ class BotTG():
         #
         # return {"status": status, "chat_id": chat_id, "text": text}
 
+    def GetMessagesFromCSV(self, path):
+        import csv, json
+        messages = list()
+
+        with open(f'dialogs\\{path}', 'r', encoding='utf-8') as file:
+            reader = csv.reader(file, delimiter=';')
+            for row in reader:
+                obj = {
+                    'message_id': None,
+                    'status': None,
+                    'items': None
+                }
+
+                obj['message_id'] = row[0]
+                obj['status'] = row[1]
+                obj['items'] = json.loads(row[2].replace("'", '"').replace('\n', ' ').replace('None', 'null'))
+                messages.append(obj)
+            
+        return messages
+    
+    def ListCSVFiles(self):
+        import os
+
+        csv_files = list()
+        root_dir = os.path.dirname(os.path.abspath(__file__))
+        sub_dir = root_dir + '\\dialogs'
+
+        for path in os.listdir(sub_dir):
+            if os.path.isfile(os.path.join(sub_dir, path)):
+                csv_files.append(path)
+
+        return csv_files
+
+
