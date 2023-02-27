@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # print(BotVK().getLastMessageIDFromCSV('2000000015'))
 
     bot_tg = BotTG()
-    csv_files = bot_tg.ListCSVFiles()
+    #json_files = bot_tg.ListJSONFiles()
 
-    for file in csv_files:
-        print(bot_tg.GetMessagesFromCSV(file))
+    bot_tg.listenForUpdates()
+        

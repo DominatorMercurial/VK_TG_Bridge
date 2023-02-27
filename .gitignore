@@ -1,0 +1,4 @@
+auth_info.py
+dialogs/*.*
+__pycache__
+.vscode/*.*
