@@ -6,6 +6,19 @@ def directoryChecker():
     if not os.path.exists('dialogs'):
         os.mkdir('dialogs')
 
+    if not os.path.exists('files'):
+        os.mkdir('files')
+
+    folders = [
+        'data',
+        'photos',
+        'videos'
+    ]
+
+    for folder in folders:
+        if not os.path.exists(os.path.join('files', folder)):
+            os.mkdir(os.path.join('files', folder))
+
 def checkUnreadChats():
     unread_chats = BotVK().messages_getConversations()
     message = f"У вас есть {len(unread_chats)} бесед(ы) с непрочитанными сообщениями:\n"
@@ -19,16 +32,13 @@ def getAllUnreadMessages():
     for u_chat in unread_chats:
         messages = BotVK().messages_getHistory(u_chat['id'])
 
+
+
 if __name__ == '__main__':
     directoryChecker()
-    # checkUnreadChats()
-    #getAllUnreadMessages()
-    # BotVK().messages_markAsRead('2000000015', 150358)
-    #BotVK().deletingRowsByID('2000000015', 150431)
-    # print(BotVK().getLastMessageIDFromCSV('2000000015'))
+    
 
     bot_tg = BotTG()
-    #json_files = bot_tg.ListJSONFiles()
 
     bot_tg.listenForUpdates()
-        
+   

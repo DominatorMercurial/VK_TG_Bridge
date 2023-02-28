@@ -8,9 +8,15 @@ class BotTG():
         self.__API_Link = f"https://api.telegram.org/bot{tg_token}/"
         self._last_message_id = 0
         self._myID = my_tg_id
+        self.__vk_token = vk_token
         self.__mailing_list = list()
-        self.__updates_offset = 0
-        self.__current_chat_id = None
+        self.__errors_count = 0
+
+        try:
+            with open('files/data/saved_update.txt', mode='r') as file:
+                self.__updates_offset = file.read()
+        except:
+            self.__updates_offset = 0
 
     def sendMessageRequestGeneration(self,**kwargs):
         messageTemplate = self.__API_Link + f"sendMessage?"
@@ -44,6 +50,27 @@ class BotTG():
         voice_encoded = urllib.parse.urlencode(voice_raw)
         r = requests.get(self.__API_Link + f"sendVoice?chat_id={self._myID}&{voice_encoded}&caption={caption}").json()
 
+    def sendVideoMessage(self, video_link: str = '', caption='', file = None):
+        # video_raw = {'video': video_link}
+        # video_encoded = urllib.parse.urlencode(video_raw)
+        # r = requests.get(self.__API_Link + f"sendVideo?chat_id={self._myID}&{video_encoded}&caption={caption}").json()
+        # print(r)
+        params = {
+            'chat_id': self._myID
+        }
+
+        file = { 
+            'video': ('test.mp4', file)
+        }
+
+        headers = {
+            'Content-Type': 'multipart/form-data'
+        }
+
+        r = requests.post("https://httpbin.org/post", json=params, files=file)
+        print(r.text)
+
+
     def sendMediaGroup(self, media_list : list, caption : str = ""):
         params = {
             'chat_id': self._myID,
@@ -51,38 +78,19 @@ class BotTG():
             'caption': caption
         }
         r = requests.post(self.__API_Link + f"sendMediaGroup", json=params).json()
-        print(r)
+        
+        if r['ok'] == False:
+            if self.__errors_count == 5:
+                self.__errors_count = 0
+                return r
+            
+            self.__errors_count += 1
+            print(r)
+            print(media_list)
+            return self.sendMediaGroup(media_list, caption=caption)
         
 
-    def sendGeneric(self, method: str, params: dict):
-        params_str = ''
-        for param in params:
-            if params[param] is not None:
-                param_raw = {param : params['param']}
-                print(param_raw)
-
-    def sendMultiMessage(self, messages : list):
-        for message in messages:
-            if len(message['attachments']['photo_urls']) > 0:
-                photo_urls = message['attachments']['photo_urls']
-                if len(photo_urls) == 1:
-                    caption = f"От: {message['from']}\n{message['text']}\n{message['datetime']}"
-                    self.sendPhotoMessage(photo_urls[0], caption)
-                    return
-                else:
-                    for url in photo_urls:
-                        pass
-            if message['attachments']['audio_message'] is not None:
-                self.sendVoiceMessage(message['attachments']['audio_message'])
-                return
-            if message['attachments']['audio_file'] is not None:
-                audio = message['attachments']['audio_file']
-                self.sendAudioMessage(audio_link=audio['url'], caption=message['text'], title=f"{audio['artist']} - {audio['title']}")
-                return
-            text = f"От: {message['from']}\n{message['text']}\n{message['datetime']}"
-            self.sendMessage(text)
-
-    def createMediaList(self, photos: list, videos: list):
+    def createMediaList(self, photos: list = [], videos: list = [], audios: list = [], docs: list = []):
         media_list = list()
 
         for photo in photos:
@@ -97,31 +105,34 @@ class BotTG():
                 'media': video['url']
             })
 
+        for audio in audios:
+            media_list.append({
+                'type': audio['type'],
+                'media': audio['url'],
+                'perfomer': audio['artist'],
+                'title': audio['title']
+            })
+        
+        for doc in docs:
+            media_list.append({
+                'type': 'document',
+                'media': doc['url']
+            })
+
         return media_list
 
-    def updatesInfo(self, updates):
-            for item in updates['result']:
-                print(item)
-                if 'message' in item:
-                    user = item['message']['from']
-                    chat = item['message']['chat']
-                    print(f"UPDATE ID: {item['update_id']}")
-                    if 'title' in chat:
-                        print(f"TITLE: {chat['title']} | TYPE {chat['type']} | CHAT ID: {chat['id']}")
+    def getFilePath(self, file_id):
+        r = requests.get(self.__API_Link + f"getFile?file_id={file_id}").json()
+        print(r)
+        return r['result']['file_path']
+    
+    def getFile(self, file_path):
+        file_link = f"https://api.telegram.org/file/bot{tg_token}/{file_path}"
+        r = requests.get(file_link)
 
-                    print(f"USER NAME: {user['username']} | NAME: {user['first_name']}", end="")
-                    if 'last_name' in user:
-                        print(f" {user['last_name']}", end="")
-                    print(f" | USER ID: {user['id']}")
+        with open(f'files/{file_path}', mode='wb') as photo:
+            photo.write(r.content)
 
-                    if 'text' in item['message']:
-                        print(f"MESSAGE: {item['message']['text']}")
-
-                        if 'entities' in item['message']:
-                            for entity in item['message']['entities']:
-                                print(f"\tMESSAGE LENGTH: {entity['length']}")
-                                print(f"\tMESSAGE TYPE: {entity['type']}")
-                    print()
 
     def getUpdatesFromTelegram(self):
         req = requests.get(self.__API_Link + f"getUpdates?offset={self.__updates_offset}").json()
@@ -130,7 +141,6 @@ class BotTG():
         if updates:
             self.__updates_offset = int(updates[len(updates) - 1]['update_id']) + 1
         return updates
-        #self.updatesInfo(updates)
 
     def listenForUpdates(self):
         import time
@@ -138,11 +148,30 @@ class BotTG():
             updates = self.getUpdatesFromTelegram()
             print(updates)
             if updates:
+                self.saveUpdateId(updates[len(updates) - 1]['update_id'])
                 for update in updates:
-                    if 'text' in update['message'] and update['message']['text'][:1] == '/':
-                        self.__ParseCommand(update['message']['text'])
+                    self.parseUpdate(update)
 
             time.sleep(5)
+
+    def parseUpdate(self, update):
+        if 'text' in update['message']:
+            if update['message']['text'][:1] == '/':
+                #self.__ParseCommand(update['message']['text'])
+                pass
+            else:
+                pass
+                    
+        if 'photo' in update['message']:
+            photos = update['message']['photo']
+            photo_id = photos[len(photos) - 1]['file_id']
+            photo_path = self.getFilePath(photo_id)
+            self.getFile(photo_path)
+
+        if 'video' in update['message']:
+            video_id = update['message']['video']['file_id']
+            video_path = self.getFilePath(video_id)
+            self.getFile(video_path)
         
     def __ParseCommand(self, command: str):
         command_data = command.split()
@@ -153,7 +182,6 @@ class BotTG():
     def __GetChat(self, chat_id: str):
         items = self.loadJSONData(chat_id)
         self.parseItems(items)
-
 
     def __GetMessagesFromCSV(self, path):
         import csv, json
@@ -200,10 +228,29 @@ class BotTG():
         for message in items:
             if 'attachments' in message:
                 if message['attachments']['photo'] or message['attachments']['video']:
-                    media_list = self.createMediaList()
-                    self.sendMediaGroup(media_list)
+                    media_list = self.createMediaList(photos=message['attachments']['photo'], videos=message['attachments']['video'])
+                    self.sendMediaGroup(media_list, caption=message['text'])
+
                 if message['attachments']['audio']:
-                    pass
+                    media_list = self.createMediaList(audios=message['attachments']['audio'])
+                    self.sendMediaGroup(media_list, caption=message['text'])
+
+                if message['attachments']['doc']:
+                    media_list = self.createMediaList(docs=message['attachments']['doc'])
+                    self.sendMediaGroup(media_list, caption=message['text'])
             else:
                 self.sendMessage(message['text'])
 
+    def saveFileFromURL(self, url, directory, filename, file_extention):
+        with open(f'files/{directory}/{filename}.{file_extention}', mode='wb') as docs:
+            headers = {
+                'Authorization': f'Bearer {self.__vk_token}'
+            }
+
+            ufr = requests.get(url, headers=headers)
+            print(ufr.content)
+            docs.write(ufr.content)
+
+    def saveUpdateId(self, update_id):
+        with open('files/data/saved_update.txt', mode='w') as file:
+            file.write(str(update_id + 1))
