@@ -33,6 +33,22 @@ def getAllUnreadMessages():
         messages = BotVK().messages_getHistory(u_chat['id'])
 
 
+# class A:
+#     def test(self):
+#         parsed_update = {
+#                 'from': None,
+#                 'date': None,
+#                 'text': None,
+#                 'photo': None,
+#                 'video': None,
+#                 'caption': None
+#             }
+#         return parsed_update
+    
+#     def test2():
+#         return
+
+
 
 if __name__ == '__main__':
     directoryChecker()
@@ -40,5 +56,7 @@ if __name__ == '__main__':
 
     bot_tg = BotTG()
 
-    bot_tg.listenForUpdates()
-   
+    while True:
+        for parsed_update in bot_tg.listenForUpdates():
+            print(parsed_update['from'])
+

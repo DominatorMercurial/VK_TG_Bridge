@@ -144,34 +144,55 @@ class BotTG():
 
     def listenForUpdates(self):
         import time
+        time.sleep(2)
         while True:
             updates = self.getUpdatesFromTelegram()
             print(updates)
             if updates:
                 self.saveUpdateId(updates[len(updates) - 1]['update_id'])
                 for update in updates:
-                    self.parseUpdate(update)
+                    print(self.parseUpdate(update))
+                    return self.parseUpdate(update)
 
-            time.sleep(5)
 
     def parseUpdate(self, update):
+        import datetime
+
+        parsed_update = {
+            'from': None,
+            'date': None,
+            'text': None,
+            'photo': None,
+            'video': None,
+            'caption': None
+        }
+
+        parsed_update['from']  = update['message']['from']
+        parsed_update['date'] = datetime.datetime.fromtimestamp(float(update['message']['date'])).strftime('%Y-%m-%d %H:%M:%S')
+
         if 'text' in update['message']:
             if update['message']['text'][:1] == '/':
-                #self.__ParseCommand(update['message']['text'])
-                pass
+                self.__ParseCommand(update['message']['text'])
             else:
-                pass
+                parsed_update['text'] = update['message']['text']
                     
         if 'photo' in update['message']:
             photos = update['message']['photo']
             photo_id = photos[len(photos) - 1]['file_id']
             photo_path = self.getFilePath(photo_id)
             self.getFile(photo_path)
+            parsed_update['photo'] = 'files/' + photo_path
 
         if 'video' in update['message']:
             video_id = update['message']['video']['file_id']
             video_path = self.getFilePath(video_id)
             self.getFile(video_path)
+            parsed_update['video'] = 'files/' + video_path
+
+        if 'caption' in update['message']:
+            parsed_update['caption'] = update['message']['caption']
+
+        return parsed_update
         
     def __ParseCommand(self, command: str):
         command_data = command.split()
