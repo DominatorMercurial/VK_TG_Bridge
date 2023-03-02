@@ -2,6 +2,7 @@ from array import array
 import requests
 from auth_info import *
 import urllib.parse
+from threading import *
 
 class BotTG():
     def __init__(self):
@@ -32,7 +33,9 @@ class BotTG():
             self.sendMessage(self.__API_Link + f"se")
 
     def sendMessage(self, messageText : str):
-        send_message = requests.get(self.__API_Link + f"sendMessage?chat_id={self._myID}&text={messageText}").json()
+        message_raw = {'text': messageText}
+        message_encoded = urllib.parse.urlencode(message_raw)
+        send_message = requests.get(self.__API_Link + f"sendMessage?chat_id={self._myID}&{message_encoded}&parse_mode=HTML").json()
         # print(send_message)
 
     def sendPhotoMessage(self, photo_link: str, caption=''):
@@ -85,8 +88,8 @@ class BotTG():
                 return r
             
             self.__errors_count += 1
-            print(r)
-            print(media_list)
+            # print(r)
+            # print(media_list)
             return self.sendMediaGroup(media_list, caption=caption)
         
 
@@ -100,10 +103,13 @@ class BotTG():
             })
 
         for video in videos:
-            media_list.append({
-                'type': video['type'],
-                'media': video['url']
-            })
+            if "https://youtube.com" not in video['url']:
+                media_list.append({
+                    'type': video['type'],
+                    'media': video['url']
+                })
+            else:
+                self.sendMessage(video['url'])
 
         for audio in audios:
             media_list.append({
@@ -119,11 +125,11 @@ class BotTG():
                 'media': doc['url']
             })
 
+        print(media_list)
         return media_list
 
     def getFilePath(self, file_id):
         r = requests.get(self.__API_Link + f"getFile?file_id={file_id}").json()
-        print(r)
         return r['result']['file_path']
     
     def getFile(self, file_path):
@@ -144,15 +150,17 @@ class BotTG():
 
     def listenForUpdates(self):
         import time
-        time.sleep(2)
+        parsed_updates = list()
         while True:
             updates = self.getUpdatesFromTelegram()
             print(updates)
             if updates:
                 self.saveUpdateId(updates[len(updates) - 1]['update_id'])
                 for update in updates:
-                    print(self.parseUpdate(update))
-                    return self.parseUpdate(update)
+                    parsed_updates.append(self.parseUpdate(update))
+                      
+            time.sleep(2)
+            return parsed_updates
 
 
     def parseUpdate(self, update):
@@ -198,7 +206,9 @@ class BotTG():
         command_data = command.split()
 
         if command_data[0] == "/chat":
-            self.__GetChat(command_data[1])
+            thread = Thread(target=self.__GetChat, args=(command_data[1],))
+            thread.start()
+            #self.__GetChat(command_data[1])
 
     def __GetChat(self, chat_id: str):
         items = self.loadJSONData(chat_id)
@@ -260,7 +270,7 @@ class BotTG():
                     media_list = self.createMediaList(docs=message['attachments']['doc'])
                     self.sendMediaGroup(media_list, caption=message['text'])
             else:
-                self.sendMessage(message['text'])
+                self.sendMessage(f"<u>{message['datetime']}</u>\n<b>{message['from']}</b>\n{message['text']}")
 
     def saveFileFromURL(self, url, directory, filename, file_extention):
         with open(f'files/{directory}/{filename}.{file_extention}', mode='wb') as docs:
