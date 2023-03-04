@@ -8,10 +8,13 @@ class BotTG():
     def __init__(self):
         self.__API_Link = f"https://api.telegram.org/bot{tg_token}/"
         self._last_message_id = 0
-        self._myID = my_tg_id
+        self.__myID = my_tg_id
         self.__vk_token = vk_token
         self.__mailing_list = list()
         self.__errors_count = 0
+        self.__thread = None
+
+        self.u_chat_list = None
 
         try:
             with open('files/data/saved_update.txt', mode='r') as file:
@@ -35,23 +38,23 @@ class BotTG():
     def sendMessage(self, messageText : str):
         message_raw = {'text': messageText}
         message_encoded = urllib.parse.urlencode(message_raw)
-        send_message = requests.get(self.__API_Link + f"sendMessage?chat_id={self._myID}&{message_encoded}&parse_mode=HTML").json()
+        send_message = requests.get(self.__API_Link + f"sendMessage?chat_id={self.__myID}&{message_encoded}&parse_mode=HTML").json()
         # print(send_message)
 
     def sendPhotoMessage(self, photo_link: str, caption=''):
         photo_raw = {'photo': photo_link}
         photo_encoded = urllib.parse.urlencode(photo_raw)
-        r = requests.get(self.__API_Link + f"sendPhoto?chat_id={self._myID}&{photo_encoded}&caption={caption}").json()
+        r = requests.get(self.__API_Link + f"sendPhoto?chat_id={self.__myID}&{photo_encoded}&caption={caption}").json()
 
     def sendAudioMessage(self, audio_link: str, caption='', title='unknown'):
         audio_raw = {'audio': audio_link}
         audio_encoded = urllib.parse.urlencode(audio_raw)
-        r = requests.get(self.__API_Link + f"sendAudio?chat_id={self._myID}&{audio_encoded}&caption={caption}&title={title}").json()
+        r = requests.get(self.__API_Link + f"sendAudio?chat_id={self.__myID}&{audio_encoded}&caption={caption}&title={title}").json()
 
     def sendVoiceMessage(self, voice_link: str, caption=''):
         voice_raw = {'voice': voice_link}
         voice_encoded = urllib.parse.urlencode(voice_raw)
-        r = requests.get(self.__API_Link + f"sendVoice?chat_id={self._myID}&{voice_encoded}&caption={caption}").json()
+        r = requests.get(self.__API_Link + f"sendVoice?chat_id={self.__myID}&{voice_encoded}&caption={caption}").json()
 
     def sendVideoMessage(self, video_link: str = '', caption='', file = None):
         # video_raw = {'video': video_link}
@@ -59,7 +62,7 @@ class BotTG():
         # r = requests.get(self.__API_Link + f"sendVideo?chat_id={self._myID}&{video_encoded}&caption={caption}").json()
         # print(r)
         params = {
-            'chat_id': self._myID
+            'chat_id': self.__myID
         }
 
         file = { 
@@ -76,7 +79,7 @@ class BotTG():
 
     def sendMediaGroup(self, media_list : list, caption : str = ""):
         params = {
-            'chat_id': self._myID,
+            'chat_id': self.__myID,
             'media': media_list,
             'caption': caption
         }
@@ -103,7 +106,7 @@ class BotTG():
             })
 
         for video in videos:
-            if "https://youtube.com" not in video['url']:
+            if "https://www.youtube.com" not in video['url']:
                 media_list.append({
                     'type': video['type'],
                     'media': video['url']
@@ -125,7 +128,7 @@ class BotTG():
                 'media': doc['url']
             })
 
-        print(media_list)
+        #print(media_list)
         return media_list
 
     def getFilePath(self, file_id):
@@ -172,7 +175,8 @@ class BotTG():
             'text': None,
             'photo': None,
             'video': None,
-            'caption': None
+            'caption': None,
+            'command': None
         }
 
         parsed_update['from']  = update['message']['from']
@@ -180,7 +184,7 @@ class BotTG():
 
         if 'text' in update['message']:
             if update['message']['text'][:1] == '/':
-                self.__ParseCommand(update['message']['text'])
+               parsed_update['command'] = self.__ParseCommand(update['message']['text'])
             else:
                 parsed_update['text'] = update['message']['text']
                     
@@ -204,15 +208,42 @@ class BotTG():
         
     def __ParseCommand(self, command: str):
         command_data = command.split()
+        target, args, result = None, None, None
 
         if command_data[0] == "/chat":
-            thread = Thread(target=self.__GetChat, args=(command_data[1],))
-            thread.start()
+            chat_name = self.__findChatByName(command_data[1])
+            if chat_name:
+                if len(chat_name) > 1:
+                    return "#too much mathes"
+            else:
+                return "#no matches"
+
+
+            target = self.__GetChat
+            args = (chat_name[0],)
             #self.__GetChat(command_data[1])
+
+        if command_data[0] == "/unread":
+            result = command_data[0]
+
+        self.__thread = Thread(target=target, args=args)
+        self.__thread.start()
+
+        return result
 
     def __GetChat(self, chat_id: str):
         items = self.loadJSONData(chat_id)
         self.parseItems(items)
+
+    def __findChatByName(self, chat_name):
+        result = list()
+        for u_chat in self.u_chat_list:
+            for key in u_chat:
+                if chat_name.lower() in key.lower():
+                    result.append(u_chat[key])
+        return result
+                
+
 
     def __GetMessagesFromCSV(self, path):
         import csv, json
