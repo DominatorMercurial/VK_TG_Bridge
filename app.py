@@ -13,6 +13,19 @@ def directoryChecker():
         os.mkdir('files/videos')
         os.mkdir('files/audios')
 
+    if not os.path.exists('files_tg'):
+        os.mkdir('files_tg')
+
+    folders = [
+        'data',
+        'photos',
+        'videos'
+    ]
+
+    for folder in folders:
+        if not os.path.exists(os.path.join('files_tg', folder)):
+            os.mkdir(os.path.join('files_tg', folder))
+
 
 def deleteAllFiles():
     shutil.rmtree('files')
@@ -39,8 +52,13 @@ def checkUnreadChats(bot_tg: BotTG):
     u_chat_list = list()
     for u_chat in unread_chats:
         print(u_chat['id'], u_chat['from'])
+        u_chat_list.append({
+            u_chat['from']: u_chat['id']
+        })
         message+=f"\t-{u_chat['from']} ({u_chat['unread']})\n"
     bot_tg.sendMessage(message)
+    
+    return u_chat_list
 
 
 def getAllUnreadMessages():
@@ -95,9 +113,21 @@ def getVideoByURL(link):
     content.append(BotVK().video_save(url=link))
     return content
 
+def startBotVK():
+    sleep_time = 15
 
+    while True:
+        result = getAllUnreadMessages()
+        if result > 0:
+            sleep_time = 2
+        else:
+            sleep_time = 15
+        time.sleep(sleep_time)
 
 if __name__ == '__main__':
+    import time
+    import threading
+
     directoryChecker()
     # checkUnreadChats()
     # getAllUnreadMessages()
@@ -105,9 +135,21 @@ if __name__ == '__main__':
     #BotVK().deletingRowsByID('2000000015', 150431)
     # print(BotVK().getLastMessageIDFromCSV('2000000015'))
 
-    bot_tg = BotTG()
+    # threadVK = Thread(target=startBotVK)
+    # threadVK.start()
+    
 
+    bot_tg = BotTG()
+    sleep_time = 15
     while True:
+        
+        start_message_id = getAllUnreadMessages()
+        if start_message_id > 0:
+            sleep_time = 2
+            bot_tg.start_message_id = start_message_id
+        else:
+            sleep_time = 15
+
         for parsed_update in bot_tg.listenForUpdates():
             if parsed_update['command'] == "/unread":
                bot_tg.u_chat_list = checkUnreadChats(bot_tg)
@@ -116,3 +158,5 @@ if __name__ == '__main__':
             if parsed_update['command'] == "#no matches":
                 bot_tg.sendMessage("<b>ERROR!</b>\nПо вашему запросу не найдено ни одного совпадения.")
             print(parsed_update)
+
+        time.sleep(sleep_time)
