@@ -1,6 +1,7 @@
 import shutil
 from bot_tg import *
 from bot_vk import *
+import time
 
 
 def directoryChecker():
@@ -62,10 +63,16 @@ def checkUnreadChats(bot_tg: BotTG):
 
 
 def getAllUnreadMessages():
+    start_ids_list = list()
     unread_chats = BotVK().messages_getConversations()
     for u_chat in unread_chats:
-        messages = BotVK().messages_getUnreadHistory(u_chat['id'])
-        print(messages)
+        start_message_id = BotVK().messages_getUnreadHistory(u_chat['id'])
+        print(start_message_id)
+        start_ids_list.append({
+            str(u_chat['id']): start_message_id
+        })
+
+    return start_ids_list
 
 
 def saveImageFromUrlList(urls):
@@ -113,19 +120,42 @@ def getVideoByURL(link):
     content.append(BotVK().video_save(url=link))
     return content
 
-def startBotVK():
-    sleep_time = 15
+def startBotVK(bot_tg: BotTG):
+    
+    sleep_time = 2
 
     while True:
-        result = getAllUnreadMessages()
-        if result > 0:
-            sleep_time = 2
+        start_ids_list = getAllUnreadMessages()
+        print("START ID LIST", start_ids_list)
+        if start_ids_list == []:
+            sleep_time = 3
         else:
-            sleep_time = 15
+            sleep_time = 1
+            bot_tg.start_ids_list = start_ids_list
+
+        time.sleep(sleep_time)
+
+def startBotTG(bot_tg: BotTG):
+    sleep_time = 2
+    
+    while True:
+        
+        for parsed_update in bot_tg.listenForUpdates():
+            if parsed_update['command'] == "/unread":
+               bot_tg.u_chat_list = checkUnreadChats(bot_tg)
+            if parsed_update['command'] == "#too much mathes":
+                bot_tg.sendMessage("<b>ERROR!</b>\nУкажите название беседы более конкретно, по вашему запросу найдено более одного совпадения")
+            if parsed_update['command'] == "#no matches":
+                bot_tg.sendMessage("<b>ERROR!</b>\nПо вашему запросу не найдено ни одного совпадения.")
+            # print(parsed_update)
+            if parsed_update == []:
+                sleep_time = 3
+            else:
+                sleep_time = 1
+
         time.sleep(sleep_time)
 
 if __name__ == '__main__':
-    import time
     import threading
 
     directoryChecker()
@@ -135,28 +165,15 @@ if __name__ == '__main__':
     #BotVK().deletingRowsByID('2000000015', 150431)
     # print(BotVK().getLastMessageIDFromCSV('2000000015'))
 
-    # threadVK = Thread(target=startBotVK)
-    # threadVK.start()
+    bot_tg = BotTG()
+    args = (bot_tg,)
+
+    threadVK = Thread(target=startBotVK, args=args)
+    threadVK.start()
+
+    threadTG = Thread(target=startBotTG, args=args)
+    threadTG.start()
+
     
 
-    bot_tg = BotTG()
-    sleep_time = 15
-    while True:
         
-        start_message_id = getAllUnreadMessages()
-        if start_message_id > 0:
-            sleep_time = 2
-            bot_tg.start_message_id = start_message_id
-        else:
-            sleep_time = 15
-
-        for parsed_update in bot_tg.listenForUpdates():
-            if parsed_update['command'] == "/unread":
-               bot_tg.u_chat_list = checkUnreadChats(bot_tg)
-            if parsed_update['command'] == "#too much mathes":
-                bot_tg.sendMessage("<b>ERROR!</b>\nУкажите название беседы более конкретно, по вашему запросу найдено более одного совпадения")
-            if parsed_update['command'] == "#no matches":
-                bot_tg.sendMessage("<b>ERROR!</b>\nПо вашему запросу не найдено ни одного совпадения.")
-            print(parsed_update)
-
-        time.sleep(sleep_time)

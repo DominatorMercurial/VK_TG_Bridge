@@ -15,7 +15,7 @@ class BotTG():
         self.__thread = None
 
         self.u_chat_list = None
-        self.start_message_id = 0
+        self.start_ids_list = None
 
         try:
             with open('files_tg/data/saved_update.txt', mode='r') as file:
@@ -153,17 +153,15 @@ class BotTG():
         return updates
 
     def listenForUpdates(self):
-        import time
         parsed_updates = list()
         while True:
             updates = self.getUpdatesFromTelegram()
-            print(updates)
+            # print(updates)
             if updates:
                 self.saveUpdateId(updates[len(updates) - 1]['update_id'])
                 for update in updates:
                     parsed_updates.append(self.parseUpdate(update))
                       
-            time.sleep(2)
             return parsed_updates
 
 
@@ -219,9 +217,9 @@ class BotTG():
             else:
                 return "#no matches"
 
-
+            self.current_chat = str(chat_name[0])
             target = self.__GetChat
-            args = (chat_name[0],)
+            args = (self.current_chat,)
             #self.__GetChat(command_data[1])
 
         if command_data[0] == "/unread":
@@ -234,7 +232,42 @@ class BotTG():
 
     def __GetChat(self, chat_id: str):
         items = self.loadJSONData(chat_id)
-        self.parseItems(items)
+        start_message_id = 0
+
+        for obj in self.start_ids_list:
+            if self.current_chat in obj:
+                start_message_id = obj[self.current_chat]
+
+        new_messages = list()
+        if start_message_id > 0:
+            x = self.__BinSearch(items, start_message_id)
+
+            if x == -1:
+                new_messages = items
+            else:
+                new_messages = items[x:]
+        else:
+            new_messages = items
+                    
+
+
+        self.parseItems(new_messages)
+
+    def __BinSearch(self, items: list, message_id):
+        left = 0
+        right = len(items) - 1
+        m = 0
+
+        while right - left >= 0:
+            m = (right + left) // 2
+            if items[m]['message_id'] == message_id:
+                return m
+            if items[m]['message_id'] > message_id:
+                right = m - 1
+            if items[m]['message_id'] < message_id:
+                left = m + 1
+        
+        return -1
 
     def __findChatByName(self, chat_name):
         result = list()
@@ -280,11 +313,17 @@ class BotTG():
 
     def loadJSONData(self, file):
         import json
+        import os
+
         items = dict()
         path = f"dialogs\\{file}.json"
-
-        with open(path, 'r', encoding='utf-8') as file:
-            items = json.load(file)
+        
+        if os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as file:
+                items = json.load(file)
+        else:
+            self.sendMessage("Чат не найден. Подождите и попробуйте снова.")
+        
         return items['items']
 
     def parseItems(self, items):
