@@ -18,8 +18,11 @@ class BotTG():
         self.start_ids_list = None
 
         try:
-            with open('files_tg/data/saved_update.txt', mode='r') as file:
+            with open('files/data/saved_update.txt', mode='r') as file:
                 self.__updates_offset = file.read()
+                print("UPDATE OFFSET", self.__updates_offset)
+                if self.__updates_offset == '':
+                    self.__updates_offset = 0
         except:
             self.__updates_offset = 0
 
@@ -140,7 +143,7 @@ class BotTG():
         file_link = f"https://api.telegram.org/file/bot{tg_token}/{file_path}"
         r = requests.get(file_link)
 
-        with open(f'files_tg/{file_path}', mode='wb') as photo:
+        with open(f'files/{file_path}', mode='wb') as photo:
             photo.write(r.content)
 
 
@@ -192,13 +195,13 @@ class BotTG():
             photo_id = photos[len(photos) - 1]['file_id']
             photo_path = self.getFilePath(photo_id)
             self.getFile(photo_path)
-            parsed_update['photo'] = 'files_tg/' + photo_path
+            parsed_update['photo'] = 'files/' + photo_path
 
         if 'video' in update['message']:
             video_id = update['message']['video']['file_id']
             video_path = self.getFilePath(video_id)
             self.getFile(video_path)
-            parsed_update['video'] = 'files_tg/' + video_path
+            parsed_update['video'] = 'files/' + video_path
 
         if 'caption' in update['message']:
             parsed_update['caption'] = update['message']['caption']
@@ -344,7 +347,7 @@ class BotTG():
                 self.sendMessage(f"<u>{message['datetime']}</u>\n<b>{message['from']}</b>\n{message['text']}")
 
     def saveFileFromURL(self, url, directory, filename, file_extention):
-        with open(f'files_tg/{directory}/{filename}.{file_extention}', mode='wb') as docs:
+        with open(f'files/{directory}/{filename}.{file_extention}', mode='wb') as docs:
             headers = {
                 'Authorization': f'Bearer {self.__vk_token}'
             }
@@ -354,5 +357,5 @@ class BotTG():
             docs.write(ufr.content)
 
     def saveUpdateId(self, update_id):
-        with open('files_tg/data/saved_update.txt', mode='w') as file:
+        with open('files/data/saved_update.txt', mode='w') as file:
             file.write(str(update_id + 1))

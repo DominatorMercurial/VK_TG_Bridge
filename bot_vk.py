@@ -13,10 +13,15 @@ class BotVK:
 
     def message_parse(self, message_item: dict, users_list: dict):
         import datetime
-        # print(message_item)
+        #print(users_list)
         message = dict()
-        message['message_id'] = message_item['id']
-        message['from'] = f"{users_list[message_item['from_id']]['first_name']} {users_list[message_item['from_id']]['last_name']}"
+        if 'id' in message_item:
+            message['message_id'] = message_item['id']
+        
+        if message_item['from_id'] in users_list:
+            message['from'] = f"{users_list[message_item['from_id']]['first_name']} {users_list[message_item['from_id']]['last_name']}"
+        else:
+            message['from'] = "unknown"
         message['text'] = message_item['text']
         message['datetime'] = str(datetime.datetime.fromtimestamp(message_item['date']))
         if len(message_item['attachments']) > 0:
@@ -66,6 +71,9 @@ class BotVK:
         unread_messages = self.messages_GetConversationsById(peer_id)
         users_list = self.getConversationMembers(peer_id)
 
+        if unread_messages == 0:
+            return 0
+
         while unread_messages > 0:
             if unread_messages >= 200:
                 offset = -200
@@ -84,7 +92,9 @@ class BotVK:
 
             unread_messages += offset
             # self.writeMessageHistoryInCSV(peer_id, messages)
-            start_message_id = self.writeMessagesToJSON(peer_id, messages)
+            last_message_id = self.writeMessagesToJSON(peer_id, messages)
+
+        return messages[0]['message_id']
 
     def messages_getHistory(self, peer_id, start_message_id, number_of_messages):
         while number_of_messages > 0:
@@ -257,7 +267,7 @@ class BotVK:
             with open(f'dialogs/{peer_id}.json', mode='r', encoding='UTF-8') as file:
                 old_data = json.loads(file.read())['items']
                 last_message_id = old_data[len(old_data) - 1]['message_id']
-                print(last_message_id)
+                # print(last_message_id)
         tmp_messages = list()
 
         for message in unread_messages:
@@ -323,7 +333,7 @@ class BotVK:
         upload_url = request['response']['upload_url']
         # user_id = request['response']['user_id']
 
-        files = {'photo': open(f'files/images/{filename}.{file_extention}', mode='rb')}
+        files = {'photo': open(f'files/photos/{filename}.{file_extention}', mode='rb')}
 
         request = requests.post(upload_url, files=files).json()
         server = request['server']
